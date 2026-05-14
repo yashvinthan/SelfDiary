@@ -1,0 +1,8 @@
+{
+  "name": "Diary Assistant",
+  "description": "Your personal daily log and diary assistant. Simple, private, and works offline.",
+  "requestFramePermissions": [
+    "microphone",
+    "notifications"
+  ]
+}

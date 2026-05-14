@@ -1,0 +1,6 @@
+{
+  "appId": "com.diary.assistant",
+  "appName": "Diary Assistant",
+  "webDir": "dist",
+  "bundledWebRuntime": false
+}

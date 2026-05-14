@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Diary Assistant</string>
+    <string name="title_activity_main">Diary Assistant</string>
+    <string name="package_name">com.diary.assistant</string>
+    <string name="custom_url_scheme">com.diary.assistant</string>
+</resources>
