@@ -221,15 +221,17 @@ export async function parseLogInput(input: string): Promise<StructuredLog> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let place = (doc.places() as any).out('array').join(", ");
   
-  // Augment Whom with broader heuristics
+  // Augment Whom with broader heuristics and combinations
   const whomKeywords = [
-    "team", "friends", "family", "boss", "manager", "mom", "dad", "mother", "father", 
-    "doctor", "dentist", "clients", "client", "customer", "partner", "wife", "husband", "colleague",
-    "brother", "sister", "sibling", "son", "daughter", "child", "kids", "parents", "grandpa", "grandma",
-    "coworker", "staff", "employees", "employer", "supervisor", "director", "executive", "ceo", "cto",
-    "investor", "shareholder", "board", "committee", "student", "teacher", "professor", "instructor",
-    "coach", "mentor", "mentee", "therapist", "counselor", "lawyer", "attorney", "accountant", "mechanic",
-    "plumber", "electrician", "contractor", "agent", "broker", "realtor", "landlord", "tenant", "neighbor"
+    "team", "dev team", "sales team", "marketing team", "hr", "human resources", "support", "customer service", "it", "legal", "finance", "accounting",
+    "friends", "best friend", "close friend", "family", "relatives", "boss", "manager", "mom", "dad", "mother", "father", 
+    "doctor", "dentist", "physician", "surgeon", "nurse", "clients", "client", "customer", "partner", "business partner", "wife", "husband", "spouse", "fiance", "colleague",
+    "brother", "sister", "sibling", "son", "daughter", "child", "kids", "parents", "grandpa", "grandma", "grandparents", "aunt", "uncle", "cousin", "niece", "nephew",
+    "coworker", "staff", "employees", "employer", "supervisor", "director", "executive", "ceo", "cto", "cfo", "coo", "founder", "co-founder",
+    "investor", "shareholder", "stakeholder", "board", "committee", "student", "teacher", "professor", "instructor", "tutor",
+    "coach", "mentor", "mentee", "therapist", "counselor", "psychiatrist", "psychologist", "lawyer", "attorney", "accountant", "mechanic",
+    "plumber", "electrician", "contractor", "agent", "broker", "realtor", "landlord", "tenant", "neighbor", "roommate", "flatmate",
+    "classmate", "schoolmate", "alumni", "teammate", "squad", "crew", "gang"
   ];
   const addedWhom = [];
   for (const w of whomKeywords) {
@@ -241,14 +243,15 @@ export async function parseLogInput(input: string): Promise<StructuredLog> {
     whom = whom ? whom + ", " + addedWhom.join(", ") : addedWhom.join(", ");
   }
 
-  // Augment Place with broader heuristics
+  // Augment Place with broader heuristics and combinations
   const placeKeywords = [
-    "office", "home", "gym", "restaurant", "clinic", "hospital", "supermarket", "mall", "store", 
-    "airport", "hotel", "cafe", "coffee shop", "bank", "school", "university", "college", "campus",
-    "library", "park", "beach", "museum", "theater", "cinema", "stadium", "arena", "court", "church",
-    "temple", "mosque", "synagogue", "post office", "pharmacy", "drugstore", "bakery", "butcher", "grocery",
-    "bar", "pub", "club", "station", "subway", "train station", "bus stop", "gas station", "garage",
-    "workshop", "factory", "warehouse", "studio", "salon", "barbershop", "spa", "vet", "apartment"
+    "office", "headquarters", "hq", "home", "house", "apartment", "condo", "living room", "bedroom", "kitchen", "dining room", "balcony", "garden", "backyard", "patio",
+    "gym", "fitness center", "health club", "restaurant", "diner", "eatery", "bistro", "clinic", "hospital", "medical center", "supermarket", "mall", "shopping center", "store", "shop", "boutique", 
+    "airport", "terminal", "hotel", "motel", "resort", "cafe", "coffee shop", "starbucks", "bank", "credit union", "school", "university", "college", "campus", "high school", "middle school", "elementary school",
+    "library", "park", "playground", "beach", "coast", "museum", "gallery", "theater", "cinema", "movie theater", "stadium", "arena", "court", "field", "pitch", "church",
+    "temple", "mosque", "synagogue", "shrine", "post office", "pharmacy", "drugstore", "bakery", "butcher", "grocery", "deli",
+    "bar", "pub", "club", "nightclub", "lounge", "station", "subway", "train station", "bus stop", "bus station", "gas station", "garage", "parking lot", "parking garage",
+    "workshop", "factory", "warehouse", "plant", "mill", "studio", "salon", "barbershop", "spa", "vet", "veterinary clinic", "zoo", "aquarium", "theme park", "amusement park"
   ];
   const addedPlace = [];
   for (const p of placeKeywords) {
@@ -267,55 +270,70 @@ export async function parseLogInput(input: string): Promise<StructuredLog> {
   if (durationsArray && durationsArray.length > 0) {
     duration = durationsArray[0];
   } else {
-    const durationMatch = normalizedInput.match(/(\d+|a few|a couple of|half an|an?)\s*(hour|hr|minute|min|sec|day|week|month|year)s?/i);
+    const durationMatch = normalizedInput.match(/(\d+|a few|a couple of|half an|an?|several|many|multiple|some)\s*(hour|hr|minute|min|sec|day|week|month|year|decade)s?/i);
     if (durationMatch) duration = durationMatch[0];
-    else if (lowerInput.includes("all day")) duration = "All day";
-    else if (lowerInput.includes("all night")) duration = "All night";
-    else if (lowerInput.includes("whole day")) duration = "Whole day";
-    else if (lowerInput.includes("forever")) duration = "Forever";
+    else if (lowerInput.match(/\b(all day|entire day|whole day)\b/)) duration = "All day";
+    else if (lowerInput.match(/\b(all night|entire night|whole night)\b/)) duration = "All night";
+    else if (lowerInput.match(/\b(all morning|entire morning|whole morning)\b/)) duration = "All morning";
+    else if (lowerInput.match(/\b(all afternoon|entire afternoon|whole afternoon)\b/)) duration = "All afternoon";
+    else if (lowerInput.match(/\b(all evening|entire evening|whole evening)\b/)) duration = "All evening";
+    else if (lowerInput.match(/\b(forever|eternity)\b/)) duration = "Forever";
+    else if (lowerInput.match(/\b(a little bit|a short while|a bit|a while)\b/)) duration = "A short while";
+    else if (lowerInput.match(/\b(a long time|ages|a while)\b/)) duration = "A long time";
   }
 
-  // Emotion Detection (Expanded dictionary approach)
+  // Emotion Detection (Advanced Combination Approach with Modifiers)
   let emotions = "";
+  const emotionModifiers = "(?:very|super|really|extremely|incredibly|slightly|kind of|sort of|a bit|a little|pretty|quite)\\s+";
   const emotionKeywords = [
     "happy", "sad", "angry", "stressed", "excited", "tired", "anxious", "frustrated", 
     "overwhelmed", "joyful", "neutral", "bored", "calm", "relaxed", "nervous",
     "fantastic", "amazing", "terrible", "depressed", "furious", "delighted", "exhausted",
     "peaceful", "annoyed", "confused", "proud", "guilty", "lonely", "hopeful",
-    "ecstatic", "thrilled", "elated", "content", "satisfied", "grateful", "optimistic",
-    "inspired", "enthusiastic", "passionate", "relieved", "amused", "cheerful", "playful",
-    "miserable", "heartbroken", "devastated", "disappointed", "discouraged", "pessimistic",
-    "enraged", "irritated", "bitter", "resentful", "disgusted", "appalled", "horrified",
-    "terrified", "scared", "fearful", "panicked", "worried", "apprehensive", "insecure",
-    "jealous", "envious", "embarrassed", "ashamed", "humiliated", "regretful", "remorseful",
-    "shocked", "surprised", "astonished", "amazed", "stunned", "speechless", "bewildered",
-    "apathetic", "indifferent", "numb", "empty", "hollow", "disconnected", "detached",
-    "focused", "determined", "motivated", "driven", "confident", "courageous", "brave",
-    "lazy", "lethargic", "sluggish", "drained", "burnt out", "fatigued", "sleepy", "groggy"
+    "ecstatic", "thrilled", "elated", "content", "satisfied", "grateful", "optimistic", "glad", "merry", "upbeat",
+    "inspired", "enthusiastic", "passionate", "relieved", "amused", "cheerful", "playful", "silly", "goofy",
+    "miserable", "heartbroken", "devastated", "disappointed", "discouraged", "pessimistic", "gloomy", "melancholy", "sorrowful",
+    "enraged", "irritated", "bitter", "resentful", "disgusted", "appalled", "horrified", "outraged", "livid", "mad",
+    "terrified", "scared", "fearful", "panicked", "worried", "apprehensive", "insecure", "tense", "uneasy", "frightened",
+    "jealous", "envious", "embarrassed", "ashamed", "humiliated", "regretful", "remorseful", "awkward", "shy", "timid",
+    "shocked", "surprised", "astonished", "amazed", "stunned", "speechless", "bewildered", "dumbfounded", "flabbergasted",
+    "apathetic", "indifferent", "numb", "empty", "hollow", "disconnected", "detached", "uninterested", "bland",
+    "focused", "determined", "motivated", "driven", "confident", "courageous", "brave", "bold", "fearless", "empowered",
+    "lazy", "lethargic", "sluggish", "drained", "burnt out", "fatigued", "sleepy", "groggy", "exhausted", "wiped out", "dead"
   ];
+  const detectedEmotions = [];
   for (const keyword of emotionKeywords) {
-    if (lowerInput.match(new RegExp(`\\b${keyword}\\b`))) {
-      emotions += (emotions ? ", " : "") + keyword.charAt(0).toUpperCase() + keyword.slice(1);
+    // Check for modifier + emotion (e.g. "very happy")
+    const modifierMatch = lowerInput.match(new RegExp(`\\b(${emotionModifiers})?${keyword}\\b`, 'i'));
+    if (modifierMatch) {
+      const matchStr = modifierMatch[0];
+      // Avoid duplicate base emotions
+      if (!detectedEmotions.some(e => e.toLowerCase().includes(keyword))) {
+        detectedEmotions.push(matchStr.charAt(0).toUpperCase() + matchStr.slice(1).toLowerCase());
+      }
     }
   }
+  emotions = detectedEmotions.join(", ");
 
-  // Interaction Mode Detection (Expanded)
+  // Interaction Mode Detection (Expanded Combinations)
   let mode = "Meeting"; // Default
-  if (lowerInput.match(/\b(zoom|teams|google meet|skype|webex|video call)\b/)) mode = "Video Call";
-  else if (lowerInput.match(/\b(call|phoned|rang|called|dialed)\b/)) mode = "Call";
-  else if (lowerInput.match(/\b(email|emailed)\b/)) mode = "Email";
-  else if (lowerInput.match(/\b(whatsapp|telegram|signal)\b/)) mode = "WhatsApp";
-  else if (lowerInput.match(/\b(sms|text|texted|message|messaged)\b/)) mode = "SMS";
-  else if (lowerInput.match(/\b(slack|discord)\b/)) mode = "Chat";
-  else if (lowerInput.match(/\b(in person|face to face)\b/)) mode = "Meeting";
+  if (lowerInput.match(/\b(zoom|teams|google meet|skype|webex|video call|facetime|video chat|discord call)\b/)) mode = "Video Call";
+  else if (lowerInput.match(/\b(call|phoned|rang|called|dialed|phone call|voice call|telephone)\b/)) mode = "Call";
+  else if (lowerInput.match(/\b(email|emailed|sent an email|wrote an email)\b/)) mode = "Email";
+  else if (lowerInput.match(/\b(whatsapp|telegram|signal|viber|wechat|line)\b/)) mode = "WhatsApp/IM";
+  else if (lowerInput.match(/\b(sms|text|texted|message|messaged|sent a text|imessage|dm|pm)\b/)) mode = "SMS/Message";
+  else if (lowerInput.match(/\b(slack|discord|teams message|google chat|mattermost)\b/)) mode = "Chat";
+  else if (lowerInput.match(/\b(in person|face to face|1 on 1|one on one|f2f|in-person|grabbed coffee|had lunch)\b/)) mode = "Meeting";
+  else if (lowerInput.match(/\b(standup|huddle|sync|catch up|brainstorm|workshop|webinar|seminar|presentation|lecture|town hall)\b/)) mode = "Group Meeting";
 
-  // Data Type Detection (Expanded)
+  // Data Type Detection (Expanded Combinations)
   let type = "Text"; // Default
-  if (lowerInput.match(/\b(image|picture|photo|pic|screenshot)\b/)) type = "Image";
-  else if (lowerInput.match(/\b(audio|voice|recording|voicenote)\b/)) type = "Audio";
-  else if (lowerInput.match(/\b(physical|paper|notebook|document|pdf|file)\b/)) type = "Document";
-  else if (lowerInput.match(/\b(link|url|website|site)\b/)) type = "Link";
-  else if (lowerInput.match(/\b(video|clip|movie)\b/)) type = "Video";
+  if (lowerInput.match(/\b(image|picture|photo|pic|screenshot|meme|gif|jpeg|png|drawing|sketch)\b/)) type = "Image";
+  else if (lowerInput.match(/\b(audio|voice|recording|voicenote|podcast|mp3|voice memo|song|track)\b/)) type = "Audio";
+  else if (lowerInput.match(/\b(physical|paper|notebook|document|pdf|file|letter|mail|post|book|magazine|article|report|spreadsheet|excel|word doc|presentation|slide|ppt)\b/)) type = "Document";
+  else if (lowerInput.match(/\b(link|url|website|site|webpage|domain|blog)\b/)) type = "Link";
+  else if (lowerInput.match(/\b(video|clip|movie|film|youtube|vimeo|tiktok|reel|shorts|mp4)\b/)) type = "Video";
+  else if (lowerInput.match(/\b(code|script|program|app|software|repository|repo|snippet)\b/)) type = "Code";
 
   // Use compromise to normalize grammar and punctuation
   const descDoc = nlp(normalizedInput);
@@ -333,8 +351,8 @@ export async function parseLogInput(input: string): Promise<StructuredLog> {
   cleanDesc = cleanDesc.replace(/(^\s*\w|[\.\!\?]\s*\w)/g, c => c.toUpperCase());
 
   return {
-    whom: whom ? whom.split(", ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(", ") : "",
-    place: place ? place.split(", ").map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(", ") : "",
+    whom: whom ? whom.split(", ").map(w => w.trim().charAt(0).toUpperCase() + w.trim().slice(1)).join(", ") : "",
+    place: place ? place.split(", ").map(p => p.trim().charAt(0).toUpperCase() + p.trim().slice(1)).join(", ") : "",
     mode,
     type,
     duration,
