@@ -73,6 +73,11 @@ export function useSpeechRecognition() {
           setIsListening(false);
           return;
         }
+        if (event.error === 'network') {
+          setError("Network error: Speech recognition requires an active internet connection on this browser.");
+          setIsListening(false);
+          return;
+        }
         console.error("Web Speech Error:", event);
         setError(`Speech recognition error: ${event.error}`);
         setIsListening(false);
