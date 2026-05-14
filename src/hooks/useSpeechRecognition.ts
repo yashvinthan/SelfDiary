@@ -64,8 +64,18 @@ export function useSpeechRecognition() {
       };
 
       recognition.onerror = (event: any) => {
+        if (event.error === 'no-speech') {
+          setIsListening(false);
+          return;
+        }
+        if (event.error === 'not-allowed') {
+          setError("Microphone permission was denied.");
+          setIsListening(false);
+          return;
+        }
         console.error("Web Speech Error:", event);
-        setError(event.error);
+        setError(`Speech recognition error: ${event.error}`);
+        setIsListening(false);
       };
 
       recognition.onresult = (event: any) => {
