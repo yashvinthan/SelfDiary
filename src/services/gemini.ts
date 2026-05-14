@@ -146,15 +146,22 @@ export async function parseLogInput(input: string): Promise<StructuredLog> {
   let eventTime = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
   const reminders = [];
   
+  const reminderKeywords = ["remind", "todo", "remember", "upcoming", "follow up", "will meet", "have meeting", "need to", "plan to"];
+  const hasKeyword = reminderKeywords.some(kw => normalizedInput.toLowerCase().includes(kw));
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const verbs = (doc.verbs() as any).json();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const hasFutureVerb = verbs.some((v: any) => v.tense === 'Future');
+
+  const isIntentFuture = hasKeyword || hasFutureVerb;
+
   // Date, Time & Intent Extraction
   if (parsedDates.length > 0) {
     const parsed = parsedDates[0].start.date();
     const isFuture = parsed.getTime() > Date.now();
     
-    const reminderKeywords = ["remind", "todo", "remember", "upcoming", "follow up", "will meet", "have meeting"];
-    const isIntentFuture = reminderKeywords.some(kw => normalizedInput.toLowerCase().includes(kw)) || isFuture;
-    
-    if (isIntentFuture) {
+    if (isIntentFuture || isFuture) {
       // Clean title by stripping dates, times, and shorthand using simple regex
       let cleanTitle = normalizedInput.replace(/\b(\d{1,2}(?::\d{2})?\s*(am|pm)?)\b/gi, '')
                             .replace(/\b(twrm|tmrw|tomorrow|upcoming|remind|todo|remember|at|in|on)\b/gi, '')
@@ -181,17 +188,17 @@ export async function parseLogInput(input: string): Promise<StructuredLog> {
       eventTime = parsed.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
     }
   } else {
-    // Intent fallback using Compromise verb tense if no specific time is found
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const verbs = (doc.verbs() as any).json();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const hasFutureVerb = verbs.some((v: any) => v.tense === 'Future');
-    if (hasFutureVerb || normalizedInput.toLowerCase().includes("remind")) {
+    // Intent fallback using Compromise verb tense or keywords if no specific time is found
+    if (isIntentFuture) {
+        let cleanTitle = normalizedInput;
+        if (cleanTitle.toLowerCase().startsWith("i have ")) cleanTitle = cleanTitle.substring(7);
+        cleanTitle = cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1);
+
         const tmr = new Date();
         tmr.setDate(tmr.getDate() + 1);
         tmr.setHours(9, 0, 0, 0); // Default to 9am tomorrow
         reminders.push({
-          title: "Upcoming: " + (normalizedInput.length > 50 ? normalizedInput.substring(0, 50) + "..." : normalizedInput),
+          title: "Upcoming: " + (cleanTitle.length > 50 ? cleanTitle.substring(0, 50) + "..." : cleanTitle),
           dateTime: tmr.toISOString()
         });
     }
