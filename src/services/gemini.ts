@@ -204,45 +204,83 @@ export async function parseLogInput(input: string): Promise<StructuredLog> {
     }
   }
 
+  const lowerInput = normalizedInput.toLowerCase();
+
   // Whom & Place Extraction using Compromise entity recognition
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const whom = (doc.people() as any).out('array').join(", ");
+  let whom = (doc.people() as any).out('array').join(", ");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const place = (doc.places() as any).out('array').join(", ");
+  let place = (doc.places() as any).out('array').join(", ");
   
-  // Duration extraction
+  // Augment Whom with broader heuristics
+  const whomKeywords = ["team", "friends", "family", "boss", "manager", "mom", "dad", "mother", "father", "doctor", "dentist", "clients", "client", "customer", "partner", "wife", "husband", "colleague"];
+  const addedWhom = [];
+  for (const w of whomKeywords) {
+    if (lowerInput.match(new RegExp(`\\b${w}\\b`)) && !whom.toLowerCase().includes(w)) {
+      addedWhom.push(w);
+    }
+  }
+  if (addedWhom.length > 0) {
+    whom = whom ? whom + ", " + addedWhom.join(", ") : addedWhom.join(", ");
+  }
+
+  // Augment Place with broader heuristics
+  const placeKeywords = ["office", "home", "gym", "restaurant", "clinic", "hospital", "supermarket", "mall", "store", "airport", "hotel", "cafe", "coffee shop", "bank"];
+  const addedPlace = [];
+  for (const p of placeKeywords) {
+    if (lowerInput.match(new RegExp(`\\b${p}\\b`)) && !place.toLowerCase().includes(p)) {
+      addedPlace.push(p);
+    }
+  }
+  if (addedPlace.length > 0) {
+    place = place ? place + ", " + addedPlace.join(", ") : addedPlace.join(", ");
+  }
+
+  // Duration extraction (Expanded)
   let duration = "";
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const durationsArray = (doc as any).durations ? (doc as any).durations().out('array') : [];
   if (durationsArray && durationsArray.length > 0) {
     duration = durationsArray[0];
   } else {
-    const durationMatch = normalizedInput.match(/(\d+)\s*(hour|hr|minute|min|sec)s?/i);
+    const durationMatch = normalizedInput.match(/(\d+|a few|a couple of|half an|an?)\s*(hour|hr|minute|min|sec|day|week|month)s?/i);
     if (durationMatch) duration = durationMatch[0];
+    else if (lowerInput.includes("all day")) duration = "All day";
+    else if (lowerInput.includes("all night")) duration = "All night";
+    else if (lowerInput.includes("whole day")) duration = "Whole day";
   }
 
-  // Emotion Detection (Simple lightweight dictionary approach)
+  // Emotion Detection (Expanded dictionary approach)
   let emotions = "";
-  const emotionKeywords = ["happy", "sad", "angry", "stressed", "excited", "tired", "anxious", "frustrated", "overwhelmed", "joyful", "neutral", "bored", "calm", "relaxed", "nervous"];
+  const emotionKeywords = [
+    "happy", "sad", "angry", "stressed", "excited", "tired", "anxious", "frustrated", 
+    "overwhelmed", "joyful", "neutral", "bored", "calm", "relaxed", "nervous",
+    "fantastic", "amazing", "terrible", "depressed", "furious", "delighted", "exhausted",
+    "peaceful", "annoyed", "confused", "proud", "guilty", "lonely", "hopeful"
+  ];
   for (const keyword of emotionKeywords) {
-    if (normalizedInput.toLowerCase().includes(keyword)) {
+    if (lowerInput.match(new RegExp(`\\b${keyword}\\b`))) {
       emotions += (emotions ? ", " : "") + keyword.charAt(0).toUpperCase() + keyword.slice(1);
     }
   }
 
-  // Interaction Mode Detection
-  let mode = "Meeting";
-  const lowerInput = normalizedInput.toLowerCase();
-  if (lowerInput.includes("call") || lowerInput.includes("phoned") || lowerInput.includes("rang")) mode = "Call";
-  else if (lowerInput.includes("email")) mode = "Email";
-  else if (lowerInput.includes("whatsapp")) mode = "WhatsApp";
-  else if (lowerInput.includes("sms") || lowerInput.includes("texted") || lowerInput.includes("message")) mode = "SMS";
+  // Interaction Mode Detection (Expanded)
+  let mode = "Meeting"; // Default
+  if (lowerInput.match(/\b(zoom|teams|google meet|skype|webex|video call)\b/)) mode = "Video Call";
+  else if (lowerInput.match(/\b(call|phoned|rang|called|dialed)\b/)) mode = "Call";
+  else if (lowerInput.match(/\b(email|emailed)\b/)) mode = "Email";
+  else if (lowerInput.match(/\b(whatsapp|telegram|signal)\b/)) mode = "WhatsApp";
+  else if (lowerInput.match(/\b(sms|text|texted|message|messaged)\b/)) mode = "SMS";
+  else if (lowerInput.match(/\b(slack|discord)\b/)) mode = "Chat";
+  else if (lowerInput.match(/\b(in person|face to face)\b/)) mode = "Meeting";
 
-  // Data Type Detection
-  let type = "Text";
-  if (lowerInput.includes("image") || lowerInput.includes("picture") || lowerInput.includes("photo")) type = "Image";
-  else if (lowerInput.includes("audio") || lowerInput.includes("voice")) type = "Audio";
-  else if (lowerInput.includes("physical") || lowerInput.includes("paper")) type = "Physical";
+  // Data Type Detection (Expanded)
+  let type = "Text"; // Default
+  if (lowerInput.match(/\b(image|picture|photo|pic|screenshot)\b/)) type = "Image";
+  else if (lowerInput.match(/\b(audio|voice|recording|voicenote)\b/)) type = "Audio";
+  else if (lowerInput.match(/\b(physical|paper|notebook|document|pdf|file)\b/)) type = "Document";
+  else if (lowerInput.match(/\b(link|url|website|site)\b/)) type = "Link";
+  else if (lowerInput.match(/\b(video|clip|movie)\b/)) type = "Video";
 
   // Use compromise to normalize grammar and punctuation
   const descDoc = nlp(normalizedInput);
@@ -260,8 +298,8 @@ export async function parseLogInput(input: string): Promise<StructuredLog> {
   cleanDesc = cleanDesc.replace(/(^\s*\w|[\.\!\?]\s*\w)/g, c => c.toUpperCase());
 
   return {
-    whom: whom ? whom.charAt(0).toUpperCase() + whom.slice(1) : "",
-    place: place ? place.charAt(0).toUpperCase() + place.slice(1) : "",
+    whom: whom ? whom.split(", ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(", ") : "",
+    place: place ? place.split(", ").map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(", ") : "",
     mode,
     type,
     duration,
